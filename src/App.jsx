@@ -6,9 +6,9 @@ import ChatBox from './components/ChatBox/ChatBox'
 function App() {
 
   return (
-    <>
+    <div className='size-full'>
       <ChatBox></ChatBox>
-    </>
+    </div>
   )
 }
 
