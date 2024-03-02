@@ -1,38 +1,35 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ChatMessageContainer from "./ChatBoxComponents/ChatMessageContainer";
 import ChatMessageSender from "./ChatBoxComponents/ChatMessageSender";
-class ChatBox extends React.Component
-{ 
+function ChatBox(props) { 
     
-    constructor()
-    { 
-        super();
-        this.state = { msgQueue: [] }
-    }
+    useEffect(() => { 
+        const element = document.getElementById("message-end-flag");
+        element?.scrollIntoView({behavior: "smooth", block: "start"});
 
-    componentDidMount()
-    { 
-        this.setState({msgQueue:["User0", "User1", "User3", "User4", "User2", "User2", "User2", "User2", "User2", "User2", "User2", "User2"]})
-    }
+    }, [props.msgQueue])
 
-    render()
-    { 
-        return (
+    return (
             <div className="flex flex-col size-full overflow-auto" style={{background: 'url("m42.jpg")'}}>
-                <div className="flex grow shrink flex-col size-full gap-2 box-border p-2 overflow-y-scroll">
-                {
-                    this.state.msgQueue.map((x, i) => (
-                        <ChatMessageContainer Key={i} User={x} Text={"消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息消息"} Date={new Date()} Me={i==1 }></ChatMessageContainer>
-                    ))
-                }
+                <div id="chatbox" className="flex grow shrink flex-col size-full gap-2 box-border p-2 overflow-y-scroll">
+                    {
+                        props.msgQueue.map((x) => (
+                            <ChatMessageContainer
+                                key={x.id}
+                                user={x.user}
+                                text={x.text}
+                                date={x.date}
+                                me={props.user == x.user}></ChatMessageContainer>
+                        ))
+                    }
+                    <div id="message-end-flag"></div>
                 </div>
 
                 <div className="flex grow-0 shrink-0 flex-col">
-                    <ChatMessageSender></ChatMessageSender>
+                    <ChatMessageSender textEntered={props.newMsg}></ChatMessageSender>
                 </div>
             </div>
         )
-    }
 }
 
 

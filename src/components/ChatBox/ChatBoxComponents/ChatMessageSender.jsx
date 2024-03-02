@@ -2,15 +2,15 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 
 import { IconButton, TextField } from '@mui/material';
 import { useState } from 'react';
+import ChatBoxTextArea from './ChatBoxTextArea';
 
 
 
 
-export default function ChatMessageSender()
+export default function ChatMessageSender(props)
 { 
     const [imgSelector, setImageSelector] = useState(false);
     const height = imgSelector ? "h-28" : "h-0";
-
 
     return (
         <div className="w-full flex flex-col backdrop-blur-md shadow-md bg-white/85">
@@ -44,8 +44,7 @@ export default function ChatMessageSender()
                 <IconButton aria-label="Image" onClick={() => setImageSelector(!imgSelector)}>
                     <ImageOutlinedIcon fontSize="medium"></ImageOutlinedIcon>
                 </IconButton>
-
-                <TextField className="ease-in-out duration-300" multiline fullWidth maxRows={4} size="small"/>
+                <ChatBoxTextArea enterPressed={(x) => props.textEntered(x)}></ChatBoxTextArea>
             </div>
 
         </div>
