@@ -29,7 +29,16 @@ export default function ChatMessageContainer(props)
                     <p className="text-sm font-medium">{ convertDate(props.date)}</p>
                 </div>
                 <div className="p-2 pl-4">
-                    <span>{props.text}</span>
+                    <span>
+                        {props.msg.text}
+                    </span>
+                    {
+                        props.msg.imgs.map(x => (
+                            <span>
+                                <img className="rounded-lg max-h-96 sm:max-w-full md:max-w-96 p-1" key={x.url} src={x.url}></img>
+                            </span>
+                        ))
+                    }
                 </div>
 
             </div>

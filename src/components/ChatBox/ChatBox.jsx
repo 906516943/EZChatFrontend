@@ -17,7 +17,7 @@ function ChatBox(props) {
                             <ChatMessageContainer
                                 key={x.id}
                                 user={x.user}
-                                text={x.text}
+                                msg={x.msg}
                                 date={x.date}
                                 me={props.user == x.user}></ChatMessageContainer>
                         ))
@@ -26,7 +26,7 @@ function ChatBox(props) {
                 </div>
 
                 <div className="flex grow-0 shrink-0 flex-col">
-                    <ChatMessageSender textEntered={props.newMsg}></ChatMessageSender>
+                    <ChatMessageSender newMsg={props.newMsg}></ChatMessageSender>
                 </div>
             </div>
         )

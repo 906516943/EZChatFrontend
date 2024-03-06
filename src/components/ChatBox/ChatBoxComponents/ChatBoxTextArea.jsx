@@ -11,14 +11,10 @@ export default function (props) {
         //if enter pressed without shift, trigger send event
         if ((!e.shiftKey) && (e.key == 'Enter')) { 
             
-            if (text)
-            { 
-                props.enterPressed(text);
-                setText("");
+            props.enterPressed(text);
+            setText("");
 
-                document.getElementById("send-box").innerText = "";
-            }
-            
+            document.getElementById("send-box").innerText = "";
             e.preventDefault();
         }
     }
@@ -28,9 +24,9 @@ export default function (props) {
         id="send-box"
         onKeyDown={(e) => keyDown(e)}
         rows="1"
-        contentEditable="true"
+        contentEditable="plaintext-only"
         suppressContentEditableWarning={true}
         style={{ resize: "none" }}
-        className="w-full text-base font-medium rounded-xl p-2 pl-4 overflow-auto shadow-inner bg-white/85 focus:outline-none focus:bg-white/100 transition duration-100 ease-in"
+        className="w-full max-h-32 text-base font-medium rounded-xl p-2 pl-4 overflow-auto shadow-inner bg-white/50 focus:outline-none focus:bg-white/75 transition duration-100 ease-in"
         onInput={(e) => setText(e.target.innerText)}></div>)
 }

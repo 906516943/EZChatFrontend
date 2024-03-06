@@ -15,10 +15,12 @@
     "@fontsource/roboto": "^5.0.8",
     "@mui/icons-material": "^5.15.11",
     "@mui/material": "^5.15.11",
+    "jquery": "^3.7.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/jquery": "^3.5.29",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",

@@ -8,17 +8,17 @@ import ChatBox from './components/ChatBox/ChatBox'
 
 function App() {
 
-  const [mQueue, setmQueue] = useState([{id: Date.now(), user: "User1", text: "Hello world", date: new Date()}])
+  const [mQueue, setmQueue] = useState([{ id: Date.now(), user: "User1", msg: {text: "Hello world", imgs: []}, date: new Date()}])
 
-  const handleTextEntered = (x) => { 
+  const handleNewMsg = (x, imgs) => { 
 
-    setmQueue(mQueue.concat({id: Date.now(), user: "User2", text: x, date: new Date()}))
+    setmQueue(mQueue.concat({ id: Date.now(), user: "User2", msg: {text: x, imgs: imgs}, date: new Date()}))
   }
 
 
   return (
     <div className='size-full'>
-      <ChatBox msgQueue={mQueue} user={"User2"} newMsg={ handleTextEntered}></ChatBox>
+      <ChatBox msgQueue={mQueue} user={"User2"} newMsg={ handleNewMsg}></ChatBox>
     </div>
   )
 }
