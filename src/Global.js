@@ -1,0 +1,1 @@
+export const MESSENGER_SERVER = import.meta.env.VITE_MESSENGER_SERVER

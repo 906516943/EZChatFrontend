@@ -1,5 +1,7 @@
-function convertDate(date) {
-    let str = date?.toISOString()?.substring(11, 19)?.replace('T', ' ') ?? "N/A";
+function convertDate(timestamp) {
+
+    const dDate = new Date(timestamp)
+    let str = dDate?.toISOString()?.substring(11, 19)?.replace('T', ' ') ?? "N/A";
     return str;
 }
 
@@ -26,7 +28,7 @@ export default function ChatMessageContainer(props)
                 <div className="flex gap-10 items-center">
                     <p className="text-base font-medium">{props.user + ' :'}</p>
                     <div className="flex-1"></div>
-                    <p className="text-sm font-medium">{ convertDate(props.date)}</p>
+                    <p className="text-sm font-medium">{ convertDate(props.msgId)}</p>
                 </div>
                 <div className="p-2 pl-4">
                     <span>

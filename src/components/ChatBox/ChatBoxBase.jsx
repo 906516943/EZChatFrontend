@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import ChatMessageContainer from "./ChatBoxComponents/ChatMessageContainer";
 import ChatMessageSender from "./ChatBoxComponents/ChatMessageSender";
-function ChatBox(props) { 
+function ChatBoxBase(props) { 
     
     useEffect(() => { 
         const element = document.getElementById("message-end-flag");
@@ -18,7 +18,7 @@ function ChatBox(props) {
                                 key={x.id}
                                 user={x.user}
                                 msg={x.msg}
-                                date={x.date}
+                                msgId={x.id}
                                 me={props.user == x.user}></ChatMessageContainer>
                         ))
                     }
@@ -35,4 +35,4 @@ function ChatBox(props) {
 
 
 
-export default ChatBox;
+export default ChatBoxBase;
