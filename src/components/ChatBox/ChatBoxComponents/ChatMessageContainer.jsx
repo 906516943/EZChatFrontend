@@ -31,7 +31,7 @@ export default function ChatMessageContainer(props)
                     <p className="text-sm font-medium">{ convertDate(props.msgId)}</p>
                 </div>
                 <div className="p-2 pl-4">
-                    <span>
+                    <span className="whitespace-pre-wrap">
                         {props.msg.text}
                     </span>
                     {

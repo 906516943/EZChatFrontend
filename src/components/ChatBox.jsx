@@ -1,4 +1,4 @@
-import { MESSENGER_SERVER } from '../Global'
+import { MESSENGER_SERVER, AUTH_SERVER } from '../Global'
 import { useEffect, useRef, useState } from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
 
@@ -7,7 +7,10 @@ const LEVEL_WARN = 1;
 const LEVEL_ERROR = 2;
 const LEVEL_INFO = 3;
 
-function ConnectionNotification(connectionStatus) { 
+/*
+    Connection status banner located at the top of the Chat box
+*/
+function ConnectionStatusDOM(connectionStatus) { 
     let color;
     let v = connectionStatus.visible ? "h-14" : "h-0"
     switch (connectionStatus.level)
@@ -27,7 +30,27 @@ function ConnectionNotification(connectionStatus) {
 
 }
 
-async function ConnectToServer(retry, setConnectionStatus) { 
+async function AuthUser(connection, token) { 
+    const res = await connection.invoke("SendAuthUser", token);
+
+    if (!res) throw new Error("Login failed");
+}
+
+async function GetToken() { 
+
+    const response = await fetch(AUTH_SERVER + 'MakeGuestAuthToken', {method: 'PUT'});
+    
+    if (response.status != 200)
+        throw new Error("Request access token failed");
+
+    return response.text();
+}
+
+
+/* 
+    Connect to Chat endpoint with SignlR
+*/
+async function Connect(retry, setConnectionStatus) { 
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(MESSENGER_SERVER, {skipNegotiation: true, transport: signalR.HttpTransportType.WebSockets})
         .build();
@@ -53,8 +76,6 @@ async function ConnectToServer(retry, setConnectionStatus) {
 
         //connected successfully, return connection instance
         if (await connect()) { 
-            setConnectionStatus({ visible: true, level: LEVEL_SUCCESS, msg: "Connected" });
-            setTimeout(() => setConnectionStatus({ visible: false, level: LEVEL_SUCCESS, msg: "Connected" }), 1000);
             return connection;
         }
 
@@ -62,54 +83,85 @@ async function ConnectToServer(retry, setConnectionStatus) {
         setConnectionStatus({ visible: true, level: LEVEL_WARN, msg: "Retrying... " + (r + 1) });
     }
 
-    setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Failed to connect to the server" });
-    return null;
+    throw new Error("Connect failed");
+}
+
+function SendParse(msg){ 
+    return msg;
+}
+
+function ReceiveParse(msg) { 
+    return msg;
 }
 
 export default function ChatBox(props) { 
-    const [mQueue, setmQueue] = useState([])
+    const [msgQueue, setMsgQueue] = useState([])
     const [connectionStatus, setConnectionStatus] = useState({ visible: true, level: LEVEL_INFO, msg: "Connecting..." })
+    const [newMessage, appendNewMessage] = useState(null);
+
     const connection = useRef(null);
+    const token = useRef(null);
     const user = useRef(Math.round(Math.random() * 10000000))
-    const [newMessage, setNewMessage] = useState(null);
     
-    const handleNewMsg = (x, imgs) => { 
-        const data = { id: Date.now(), user: user.current , msg: { text: x, imgs: imgs }};
-        connection.current.invoke("SendMessage", data);
+
+    const SendNewMsg = (x, imgs) => { 
+        const msg = { id: Date.now(), user: user.current, msg: { text: x, imgs: imgs } };
         
-        setmQueue(mQueue.concat(data))
+        //append message to the message queue locally
+        appendNewMessage(msg);
+
+        //send to the server
+        connection.current.invoke("SendMessage", SendParse(msg));
     }
 
+    
     useEffect(() => { 
-        if(newMessage != null)
-        setmQueue(mQueue.concat(newMessage))
-    }, [newMessage])
 
-    useEffect(() => { 
         (async () => {
-            //connect server
-            connection.current = await ConnectToServer(5, setConnectionStatus);
 
-            //handle reconnection
-            connection.current.onclose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
+            try {
+                token.current = await GetToken(setConnectionStatus);
+                
+                //connect to the server
+                connection.current = await Connect(5, setConnectionStatus);
 
-            connection.current.on("ReceiveMessage", (x) => { 
+                //auth user
+                await AuthUser(connection.current, token.current);
 
-                if (x.user != user.current) { 
-                    setNewMessage(x);
-                }
-            });
+                setConnectionStatus({ visible: true, level: LEVEL_SUCCESS, msg: "Connected" });
+                setTimeout(() => setConnectionStatus({ visible: false, level: LEVEL_SUCCESS, msg: "Connected" }), 1000);
+
+                //handle reconnection
+                connection.current.onclose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
+
+                //handle new message
+                connection.current.on("ReceiveMessage", (x) => { 
+                
+                    if (x.user != user.current) { 
+                        appendNewMessage(x);
+                    }
+                });
+
+            } catch (err){ 
+                setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: err.message})
+            }
         })();
+        
     },[])
 
 
-
+    useEffect(() => { 
+        if (newMessage != null) { 
+            console.log(newMessage);
+            setMsgQueue(msgQueue.concat(newMessage))
+        }
+    }, [newMessage])
 
 
     return (
         <div className='size-full relative'>
-            { ConnectionNotification(connectionStatus)}
-            <ChatBoxBase msgQueue={mQueue} user={user.current} newMsg={ handleNewMsg}></ChatBoxBase>
+            { ConnectionStatusDOM(connectionStatus)}
+            <ChatBoxBase msgQueue={msgQueue} user={user.current} newMsg={SendNewMsg}></ChatBoxBase>
         </div>
     )
 
