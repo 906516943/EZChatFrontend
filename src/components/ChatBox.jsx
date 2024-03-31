@@ -1,4 +1,3 @@
-import { MESSENGER_SERVER, AUTH_SERVER } from '../Global'
 import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo } from '../services/Api';
 import ChatConnector from '../services/ChatConnector';
 import { useEffect, useReducer, useRef, useState } from 'react'
@@ -38,6 +37,7 @@ function SendParse(m, channelId){
 }
 
 function ReceiveParse(msg) { 
+
     return { id: GenId(), userName: null, time:msg.timeStamp, userId: msg.senderId, msgId: msg.messageId, success: true, msg:{text:msg.text, imgs:msg.images ?? []}}
 }
 
@@ -72,6 +72,7 @@ export default function ChatBox(props) {
     const [connectionStatus, setConnectionStatus] = useState({ visible: true, level: LEVEL_INFO, msg: "Connecting..." })
 
     const chatConnector = useRef(new ChatConnector());
+    const userNamesDict = useRef(new Map());
     const token = useRef(null);
     const authInfo = useRef({userId: null});
     const userInfo = useRef({ name: null });
@@ -129,8 +130,26 @@ export default function ChatBox(props) {
                 chatConnector.current.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
 
                 //handle new message
-                chatConnector.current.OnReceiveMessage((x) => {
-                    setMsgQueue({type: 'add', item: ReceiveParse(x)});
+                chatConnector.current.OnReceiveMessage((x) => { 
+
+                    const msg = ReceiveParse(x);
+                    const name = userNamesDict.current.get(msg.userId);
+
+                    if (name == null) {
+                        
+                        //pull username
+                        GetUserInfo(msg.userId).then(y => {
+                            
+                            userNamesDict.current.set(msg.userId, y.name);
+                            setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, userName: y.name } });
+                        });
+
+                    } else { 
+                        msg.userName = name;
+                    }
+
+
+                    setMsgQueue({ type: 'add', item: msg });
                 });
 
 
