@@ -1,6 +1,9 @@
 import { MESSENGER_SERVER, AUTH_SERVER } from '../Global'
-import { useEffect, useRef, useState } from 'react'
+import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo } from '../services/Api';
+import ChatConnector from '../services/ChatConnector';
+import { useEffect, useReducer, useRef, useState } from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
+import { GenId } from "../services/Utils";
 
 const LEVEL_SUCCESS = 0;
 const LEVEL_WARN = 1;
@@ -30,88 +33,79 @@ function ConnectionStatusDOM(connectionStatus) {
 
 }
 
-async function AuthUser(connection, token) { 
-    const res = await connection.invoke("SendAuthUser", token);
-
-    if (!res) throw new Error("Login failed");
-}
-
-async function GetToken() { 
-
-    const response = await fetch(AUTH_SERVER + 'MakeGuestAuthToken', {method: 'PUT'});
-    
-    if (response.status != 200)
-        throw new Error("Request access token failed");
-
-    return response.text();
-}
-
-
-/* 
-    Connect to Chat endpoint with SignlR
-*/
-async function Connect(retry, setConnectionStatus) { 
-    const connection = new signalR.HubConnectionBuilder()
-        .withUrl(MESSENGER_SERVER, {skipNegotiation: true, transport: signalR.HttpTransportType.WebSockets})
-        .build();
-    
-    const connect = async () => { 
-        console.log("connecting...");
-
-        try {
-            await connection.start();
-
-            console.log("connected");
-            return true
-
-        } catch (err) { 
-            console.log(err);
-        }
-        
-        return false;
-    }
-
-
-    for (let r = 0; r <= retry; r++) { 
-
-        //connected successfully, return connection instance
-        if (await connect()) { 
-            return connection;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setConnectionStatus({ visible: true, level: LEVEL_WARN, msg: "Retrying... " + (r + 1) });
-    }
-
-    throw new Error("Connect failed");
-}
-
-function SendParse(msg){ 
-    return msg;
+function SendParse(m, channelId){ 
+    return {channelId: channelId, text: m.msg.text};
 }
 
 function ReceiveParse(msg) { 
-    return msg;
+    return { id: GenId(), userName: null, time:msg.timeStamp, userId: msg.senderId, msgId: msg.messageId, success: true, msg:{text:msg.text, imgs:msg.images ?? []}}
+}
+
+function MsgQueueReducer(current, action) { 
+    switch (action.type) { 
+        case 'add': { 
+            current.push(action.item); break;
+        }
+        case 'modify': { 
+            let index = -1;
+
+            for (let i = 0; i < current.length; i++) { 
+                if (current[i].id == action.id) { 
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index != -1) {
+                current[index] = action.newItem;
+            }
+
+            break;
+        }
+    }
+
+    return [...current];
 }
 
 export default function ChatBox(props) { 
-    const [msgQueue, setMsgQueue] = useState([])
+    const [msgQueue, setMsgQueue] = useReducer(MsgQueueReducer, [])
     const [connectionStatus, setConnectionStatus] = useState({ visible: true, level: LEVEL_INFO, msg: "Connecting..." })
-    const [newMessage, appendNewMessage] = useState(null);
 
-    const connection = useRef(null);
+    const chatConnector = useRef(new ChatConnector());
     const token = useRef(null);
-    const user = useRef(Math.round(Math.random() * 10000000))
+    const authInfo = useRef({userId: null});
+    const userInfo = useRef({ name: null });
+    const userGroups = useRef([])
     
 
     const SendNewMsg = (x, imgs) => { 
-        const msg = { id: Date.now(), user: user.current, msg: { text: x, imgs: imgs } };
-        
+        const msg = {
+            id: GenId(),
+            userName: userInfo.current.name,
+            time: Date.now(),
+            userId: authInfo.current.userId,
+            msgId: null,
+            success: null,
+            msg: { text: x, imgs: imgs }
+        };
+
         //append message to the message queue locally
-        appendNewMessage(msg);
+        setMsgQueue({ type: 'add', item: msg });
 
         //send to the server
-        connection.current.invoke("SendMessage", SendParse(msg));
+        chatConnector.current.SendMessage(SendParse(msg, userGroups.current[0]))
+            .then(x =>
+            { 
+                if (x == null)
+                    throw new Error("Error");
+                
+                setMsgQueue({ type: 'modify', id: msg.id, newItem: {...msg, success: true} });
+            })
+            .catch(x =>
+            {
+
+                setMsgQueue({ type: 'modify', id: msg.id, newItem: {...msg, success: false} });
+            });
     }
 
     
@@ -120,27 +114,29 @@ export default function ChatBox(props) {
         (async () => {
 
             try {
-                token.current = await GetToken(setConnectionStatus);
-                
-                //connect to the server
-                connection.current = await Connect(5, setConnectionStatus);
+                //make new user
+                token.current = await GenAccessToken();
 
-                //auth user
-                await AuthUser(connection.current, token.current);
+                //pull user info
+                authInfo.current = await GetAuthInfo(token.current);
+                userInfo.current = await GetUserInfo(authInfo.current.userId);
+                userGroups.current = await GetUserGroups(authInfo.current.userId);
+
+                //connect to the server
+                await chatConnector.current.Connect(5, token.current);
+
+                //handle reconnection
+                chatConnector.current.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
+
+                //handle new message
+                chatConnector.current.OnReceiveMessage((x) => {
+                    setMsgQueue({type: 'add', item: ReceiveParse(x)});
+                });
+
+
 
                 setConnectionStatus({ visible: true, level: LEVEL_SUCCESS, msg: "Connected" });
                 setTimeout(() => setConnectionStatus({ visible: false, level: LEVEL_SUCCESS, msg: "Connected" }), 1000);
-
-                //handle reconnection
-                connection.current.onclose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
-
-                //handle new message
-                connection.current.on("ReceiveMessage", (x) => { 
-                
-                    if (x.user != user.current) { 
-                        appendNewMessage(x);
-                    }
-                });
 
             } catch (err){ 
                 setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: err.message})
@@ -149,19 +145,10 @@ export default function ChatBox(props) {
         
     },[])
 
-
-    useEffect(() => { 
-        if (newMessage != null) { 
-            console.log(newMessage);
-            setMsgQueue(msgQueue.concat(newMessage))
-        }
-    }, [newMessage])
-
-
     return (
         <div className='size-full relative'>
             { ConnectionStatusDOM(connectionStatus)}
-            <ChatBoxBase msgQueue={msgQueue} user={user.current} newMsg={SendNewMsg}></ChatBoxBase>
+            <ChatBoxBase msgQueue={msgQueue} userName={userInfo.current.name} userId={ authInfo.current.userId} newMsg={SendNewMsg}></ChatBoxBase>
         </div>
     )
 

@@ -10,16 +10,19 @@ function ChatBoxBase(props) {
     }, [props.msgQueue])
 
     return (
-            <div className="flex flex-col size-full overflow-auto" style={{background: 'url("m42.jpg")'}}>
-                <div id="chatbox" className="flex grow shrink flex-col size-full gap-2 box-border p-2 overflow-y-scroll">
+            <div className="flex flex-col size-full overflow-auto bg-black bg-opacity-50">
+                <div id="chatbox" className="flex grow shrink flex-col size-full gap-2 box-border p-2 gap-4 overflow-y-scroll">
                     {
                         props.msgQueue.map((x) => (
                             <ChatMessageContainer
                                 key={x.id}
-                                user={x.user}
+                                userName={x.userName}
+                                userId={x.userId}
                                 msg={x.msg}
-                                msgId={x.id}
-                                me={props.user == x.user}></ChatMessageContainer>
+                                msgId={x.msgId}
+                                time={x.time}
+                                success={x.success}
+                                me={props.userId == x.userId}></ChatMessageContainer>
                         ))
                     }
                     <div id="message-end-flag"></div>
