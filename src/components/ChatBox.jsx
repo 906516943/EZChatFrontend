@@ -1,8 +1,9 @@
-import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo } from '../services/Api';
+import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo, GetImageIds, PutImage } from '../services/Api';
 import ChatConnector from '../services/ChatConnector';
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useContext, useEffect, useReducer, useRef, useState } from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
-import { GenId } from "../services/Utils";
+import { GlobalContext } from '../Global';
+import { GenId } from '../services/Utils';
 
 const LEVEL_SUCCESS = 0;
 const LEVEL_WARN = 1;
@@ -33,7 +34,7 @@ function ConnectionStatusDOM(connectionStatus) {
 }
 
 function SendParse(m, channelId){ 
-    return {channelId: channelId, text: m.msg.text};
+    return {channelId: channelId, text: m.msg.text, imagesByHash: m.msg.imgs.map(x => x.hash)};
 }
 
 function ReceiveParse(msg) { 
@@ -76,10 +77,47 @@ export default function ChatBox(props) {
     const token = useRef(null);
     const authInfo = useRef({userId: null});
     const userInfo = useRef({ name: null });
-    const userGroups = useRef([])
+    const userGroups = useRef([]);
+    const globalContext = useContext(GlobalContext);
     
 
+    const SendNewMsgAsync = async (msg) => { 
+
+        //exclude already uploaded images
+        const alreadyUploadedImgs = await GetImageIds(msg.msg.imgs.map(x => x.hash));
+        const alreadyUploadedHashes = alreadyUploadedImgs.map(x => x.hash);
+        const newImgs = msg.msg.imgs.filter(y => !alreadyUploadedHashes.includes(y.hash));
+
+        //distinct by hash
+        const newImgHashes = new Set();
+        const distinctNewImgs = newImgs.filter(x => {
+            if (!newImgHashes.has(x.hash)) {
+                newImgHashes.add(x.hash);
+                return true;
+            }
+                        
+            return false;
+        });
+
+
+        //upload new imgs
+        await Promise.all(distinctNewImgs.map(x => PutImage(globalContext.imageMap.get(x.hash).arrayBuffer)));
+
+
+        //send message
+        const msgId = await chatConnector.current.SendMessage(SendParse(msg, userGroups.current[0]));
+        
+        if (msgId == null) throw new Error("Failed to send message");
+
+
+        //update send status
+        setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, id: msgId, success: true } });
+        
+    }
+
+
     const SendNewMsg = (x, imgs) => { 
+
         const msg = {
             id: GenId(),
             userName: userInfo.current.name,
@@ -90,24 +128,17 @@ export default function ChatBox(props) {
             msg: { text: x, imgs: imgs }
         };
 
+
         //append message to the message queue locally
         setMsgQueue({ type: 'add', item: msg });
 
-        //send to the server
-        chatConnector.current.SendMessage(SendParse(msg, userGroups.current[0]))
-            .then(x =>
-            { 
-                if (x == null)
-                    throw new Error("Error");
-                
-                setMsgQueue({ type: 'modify', id: msg.id, newItem: {...msg, success: true} });
-            })
-            .catch(x =>
-            {
 
-                setMsgQueue({ type: 'modify', id: msg.id, newItem: {...msg, success: false} });
-            });
+        SendNewMsgAsync(msg)
+        .catch(x => {
+            setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, success: false } });
+        });
     }
+    
 
     
     useEffect(() => { 
@@ -131,6 +162,8 @@ export default function ChatBox(props) {
 
                 //handle new message
                 chatConnector.current.OnReceiveMessage((x) => { 
+
+                    console.log(x);
 
                     const msg = ReceiveParse(x);
                     const name = userNamesDict.current.get(msg.userId);

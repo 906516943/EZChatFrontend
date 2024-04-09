@@ -1,6 +1,8 @@
 import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 import Divider from '@mui/material/Divider';
+import { useContext } from 'react';
+import { GlobalContext } from '../../../Global';
 
 function convertDate(utcTime) {
     const timeZoneOffset = (new Date().getTimezoneOffset()) * 60000;
@@ -29,6 +31,8 @@ export default function ChatMessageContainer(props)
         </div>
     </>)
 
+    const globalContext = useContext(GlobalContext);
+    
     return (
         <div className="p-1 flex w-full items-start">
 
@@ -59,15 +63,15 @@ export default function ChatMessageContainer(props)
                         </div>
 
                         {/*content*/}
-                        <div className="pb-1 pt-0 pl-2 pr-2">
-                            <span className="whitespace-pre-wrap break-words">
+                        <div className="pb-1 pt-0 pl-2 pr-2 flex flex-wrap">
+                            <div className="whitespace-pre-wrap break-words">
                                 {props.msg.text}
-                            </span>
+                            </div>
                             {
                                 props.msg.imgs.map(x => (
-                                    <span>
-                                        <img className="rounded-lg max-h-96 p-1" key={x.url} src={x.url}></img>
-                                    </span>
+                                    <div key={x.id}>
+                                        <img className="rounded-lg max-h-96 p-1" key={x.id} src={globalContext.imageMap.get(x.hash).url}></img>
+                                    </div>
                                 ))
                             }
                         </div>        

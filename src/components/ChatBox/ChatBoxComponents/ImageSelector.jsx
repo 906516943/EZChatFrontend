@@ -2,11 +2,15 @@ import $ from 'jquery'
 import { IconButton, TextField } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import AddIcon from '@mui/icons-material/Add';
+import { useContext } from 'react';
+import { GlobalContext } from '../../../Global';
+import { GenHash, GenId } from '../../../services/Utils';
 
 const fileFormats = ['.jpg', '.jpeg', '.bmp', '.png', '.gif']
 const fileFormatsStr = fileFormats.reduce((x, y) => x + ', ' + y)
 
 export default function ImageSelector(props) { 
+    const globalContext = useContext(GlobalContext);
 
     const onNewImageClick = () => { 
         
@@ -25,7 +29,7 @@ export default function ImageSelector(props) {
 
             // cannot upload more than 10 files
             if ((props.imgs.length + files.length) > 10) {
-                alert("Cannot upload more than 10 files");
+                alert("Cannot upload more than 10 images");
                 return;
             }
 
@@ -36,7 +40,7 @@ export default function ImageSelector(props) {
                 .some(x => x > 5242880);
             
             if (exceed5MB) {
-                alert("File(s) cannot exceed 5MB");
+                alert("image size cannot exceed 5MB");
                 return;
             }
 
@@ -50,33 +54,52 @@ export default function ImageSelector(props) {
                 });
             
             if (wrongFormat) {
-                alert("Wrong file format");
+                alert("Unsupported image format found");
                 return;
             }
 
 
             //read files
-            const data = (await Promise.all(files.map(x => x.arrayBuffer())))
-                .map(x => new Blob([x]))
-                .map(x => {
-                    return { url: URL.createObjectURL(x), blob: x }
-                });
-            
-            props.setImgs(props.imgs.concat(data));
+            const data = (await Promise.all(files.map(x => x.arrayBuffer())));
+            const imgs = [];
+
+            for (var d of data) { 
+                const fileHash = GenHash(d);
+
+                if (!globalContext.imageMap.has(fileHash)) { 
+                    globalContext.imageMap.set(fileHash, { url: URL.createObjectURL(new Blob([d])), arrayBuffer: d });
+                }
+
+                imgs.push({ id: GenId(), hash: fileHash});
+            }
+
+            props.setImgs(props.imgs.concat(imgs));
         });
     }
 
 
     const onRemoveImageClick = (item) => { 
-        URL.revokeObjectURL(item.url);
-        props.setImgs(props.imgs.filter(x => x != item));
+
+        var sameImgs = props.imgs.filter(x => x.hash == item.hash);
+
+        if (sameImgs.length == 1)
+        { 
+            URL.revokeObjectURL(item.data.url);
+            globalContext.imageMap.delete(item.hash);
+        }
+
+
+        props.setImgs(props.imgs.filter(x => x.id != item.id));
     }
 
     return (
         <div id="image-selector" className='h-28 p-4 flex gap-4 w-full'>
             {
-                props.imgs.map(x => (
-                    <div key={x.url} className='h-20 w-20 rounded-lg shrink-0 shadow-xl bg-cover border-2 overflow-hidden' style={{ backgroundImage: 'url("' + x.url + '")' }}>
+                props.imgs
+                    .filter(x => globalContext.imageMap.has(x.hash))
+                    .map(x => { return { id: x.id, hash: x.hash, data: globalContext.imageMap.get(x.hash) } })
+                    .map(x => (
+                    <div key={x.id} className='h-20 w-20 rounded-lg shrink-0 shadow-xl bg-cover border-2 overflow-hidden' style={{ backgroundImage: 'url("' + x.data.url + '")' }}>
                         <div className='h-full w-full border-white bg-black/30 hover:bg-black/50 transition: duration-100 flex justify-center items-center'>
                             <div>
                                 <IconButton aria-label="Image" onClick={() => onRemoveImageClick(x)}>
