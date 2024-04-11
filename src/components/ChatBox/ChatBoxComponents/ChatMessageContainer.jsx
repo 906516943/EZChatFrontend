@@ -3,6 +3,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Divider from '@mui/material/Divider';
 import { useContext } from 'react';
 import { GlobalContext } from '../../../Global';
+import Skeleton from '@mui/material/Skeleton'
 
 function convertDate(utcTime) {
     const timeZoneOffset = (new Date().getTimezoneOffset()) * 60000;
@@ -18,6 +19,23 @@ function messageStatus(st) {
         {st == true ? <DoneIcon style={{marginTop: '-6px'}} color="primary" sx={{ fontSize: '20px' }} /> : <></>}
         {st == false ? <CloseIcon style={{marginTop: '-6px'}} color="disabled" sx={{ fontSize: '20px' }} /> : <></>}
     </div>)
+}
+
+function imgStatus(img, globalContext) { 
+    
+    return (
+        <div key={img.id}>
+            {
+                img.hash == 'loading' ? (
+                    <div className="p-1 max-h-96">
+                        <Skeleton variant="rectangular" className="rounded-lg" width={210} height={118} />
+                    </div>
+                ): (
+                    <img className="rounded-lg max-h-96 p-1" key={img.id} src={globalContext.imageMap.get(img.hash).url}></img>
+                )
+            }
+        </div>
+    )
 }
 
 export default function ChatMessageContainer(props)
@@ -63,16 +81,12 @@ export default function ChatMessageContainer(props)
                         </div>
 
                         {/*content*/}
-                        <div className="pb-1 pt-0 pl-2 pr-2 flex flex-wrap">
+                        <div className="pb-1 pt-0 pl-2 pr-2">
                             <div className="whitespace-pre-wrap break-words">
                                 {props.msg.text}
                             </div>
                             {
-                                props.msg.imgs.map(x => (
-                                    <div key={x.id}>
-                                        <img className="rounded-lg max-h-96 p-1" key={x.id} src={globalContext.imageMap.get(x.hash).url}></img>
-                                    </div>
-                                ))
+                                props.msg.imgs.map(x => imgStatus(x, globalContext))
                             }
                         </div>        
 

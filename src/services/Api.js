@@ -70,3 +70,8 @@ export async function GetImageIds(imgHashes) {
 export async function PutImage(imgBuffer) { 
     await DoPutArrayBufferBody(IMAGE_SERVER + 'Image', imgBuffer);
 }
+
+export async function GetImage(imgId, thumbnail) { 
+    const response = await DoGet(IMAGE_SERVER + 'Image/' + imgId + '?thumbnail=' + thumbnail);
+    return response.blob();
+}

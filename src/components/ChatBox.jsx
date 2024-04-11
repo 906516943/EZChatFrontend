@@ -1,9 +1,9 @@
-import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo, GetImageIds, PutImage } from '../services/Api';
+import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo, GetImageIds, PutImage, GetImage } from '../services/Api';
 import ChatConnector from '../services/ChatConnector';
 import { useContext, useEffect, useReducer, useRef, useState } from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
 import { GlobalContext } from '../Global';
-import { GenId } from '../services/Utils';
+import { GenHash, GenId } from '../services/Utils';
 
 const LEVEL_SUCCESS = 0;
 const LEVEL_WARN = 1;
@@ -39,7 +39,7 @@ function SendParse(m, channelId){
 
 function ReceiveParse(msg) { 
 
-    return { id: GenId(), userName: null, time:msg.timeStamp, userId: msg.senderId, msgId: msg.messageId, success: true, msg:{text:msg.text, imgs:msg.images ?? []}}
+    return { id: GenId(), userName: null, time:msg.timeStamp, userId: msg.senderId, msgId: msg.messageId, success: true, msg:{text:msg.text, imgs:msg.imagesById ?? []}}
 }
 
 function MsgQueueReducer(current, action) { 
@@ -161,28 +161,76 @@ export default function ChatBox(props) {
                 chatConnector.current.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
 
                 //handle new message
-                chatConnector.current.OnReceiveMessage((x) => { 
-
-                    console.log(x);
+                chatConnector.current.OnReceiveMessage(async (x) => { 
 
                     const msg = ReceiveParse(x);
-                    const name = userNamesDict.current.get(msg.userId);
 
-                    if (name == null) {
+
+                    //pull username
+                    if (!userNamesDict.current.has(msg.userId)) 
+                        userNamesDict.current.set(msg.userId, (await GetUserInfo(msg.userId)).name);
+                    
+                    console.log(userNamesDict.current.get(msg.userId));
+                    
+                    msg.userName = userNamesDict.current.get(msg.userId);
+
+
+                    //pull images from cache
+                    const imgData = msg.msg.imgs;
+                    const imgHashes = imgData.map(x => { 
+                        const ret = { id: GenId(), hash: 'loading' };
+
+                        if (globalContext.imageMap.has(x.hash))
+                            ret.hash = x.hash
+
+                        return ret;        
+                    })
+
+                    msg.msg.imgs = imgHashes;
+
                         
-                        //pull username
-                        GetUserInfo(msg.userId).then(y => {
-                            
-                            userNamesDict.current.set(msg.userId, y.name);
-                            setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, userName: y.name } });
-                        });
-
-                    } else { 
-                        msg.userName = name;
-                    }
-
-
+                    //initial render
                     setMsgQueue({ type: 'add', item: msg });
+
+
+
+                    //if we cannot find images from the cache.. load them from api
+                    for (var i = 0; i < imgData.length; i++) { 
+                        
+                        if (imgHashes[i].hash != 'loading')
+                                continue;
+
+                        
+                        //load in parallel
+                        (async () => {
+                                const currentIndex = i;
+
+
+                                //load thumbnail
+                                var thumbnail = await GetImage(imgData[currentIndex].thumbnailImgId, true);
+                                var thumbnailArrayBuffer = await thumbnail.arrayBuffer();
+                                var thumbnailHash = GenHash(thumbnailArrayBuffer);
+
+                                globalContext.imageMap.set(thumbnailHash, { url: URL.createObjectURL(new Blob([thumbnail])), arrayBuffer: thumbnailArrayBuffer});
+                                msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: thumbnailHash}
+                                
+                                setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
+                                
+
+                                //load real image
+                                var img = await GetImage(imgData[currentIndex].imgId, true);
+                                var imgArrayBuffer = await img.arrayBuffer();
+                                var imgHash = GenHash(imgArrayBuffer);
+
+                                globalContext.imageMap.set(imgHash, { url: URL.createObjectURL(new Blob([img])), arrayBuffer: imgArrayBuffer });
+                                msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: imgHash}
+                                
+                                setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
+
+                            })();
+                    }     
+
+                    
                 });
 
 
