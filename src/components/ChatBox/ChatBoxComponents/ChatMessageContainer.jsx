@@ -4,6 +4,7 @@ import Divider from '@mui/material/Divider';
 import { useContext } from 'react';
 import { GlobalContext } from '../../../Global';
 import Skeleton from '@mui/material/Skeleton'
+import Avatar from '../../Avatar';
 
 function convertDate(utcTime) {
     const timeZoneOffset = (new Date().getTimezoneOffset()) * 60000;
@@ -40,12 +41,14 @@ function imgStatus(img, globalContext) {
 
 export default function ChatMessageContainer(props)
 { 
-    const bgColor = props.me ? "bg-blue-200/70" : "bg-white/70";
+    const bgColor = props.me ? "bg-gradient-to-br from-sky-300/70 to-indigo-300/70" : "bg-gradient-to-br from-white/70 bg-slate-200/70";
     const profileImgMg = props.me ? "ml-3" : "mr-3";
 
     const profileImg = (<>
-        <div className={"shrink-0 grow-0 overflow-hidden border-2 rounded-full border-white shadow-md " + profileImgMg}>
-            <img className="bg-white" src={ props.profileImg } width={"50px"} height={"50px"}></img>
+        <div className={profileImgMg}>
+            <div style={{ height: "55px", width: "55px" }}>
+                <Avatar></Avatar>
+            </div>
         </div>
     </>)
 

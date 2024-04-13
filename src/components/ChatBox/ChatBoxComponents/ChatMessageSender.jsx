@@ -26,7 +26,7 @@ export default function ChatMessageSender(props)
 
     return (
         <div className="w-full flex flex-col backdrop-blur-md shadow-md bg-white/60">
-            <div className={"ease-in-out duration-100 overflow-y-hidden overflow-x-auto w-full " + height}>
+            <div className={"ease-in-out duration-100 overflow-y-hidden overflow-x-auto w-full " + height} style={{scrollbarWidth: 'thin'}}>
                 <ImageSelector imgs={imgs} setImgs={setImgs}></ImageSelector>
             </div>
             <div className="p-2 flex items-start gap-2">

@@ -11,7 +11,7 @@ function ChatBoxBase(props) {
 
     return (
             <div className="flex flex-col size-full overflow-auto bg-black bg-opacity-50">
-                <div id="chatbox" className="flex grow shrink flex-col size-full gap-2 box-border p-2 gap-4 overflow-y-scroll">
+                <div id="chatbox" className="flex grow shrink flex-col size-full gap-2 box-border p-2 gap-4 overflow-y-scroll " style={{scrollbarWidth: 'thin'}}>
                     {
                         props.msgQueue.map((x) => (
                             <ChatMessageContainer
