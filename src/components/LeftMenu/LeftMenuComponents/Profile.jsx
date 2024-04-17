@@ -6,7 +6,7 @@ export default function Profile(props) {
     return (
         <div className="flex gap-4 w-full h-20">
             <div className="h-full w-20">
-                <Avatar url={ props.url}></Avatar>
+                <Avatar url={props.url} border={true }></Avatar>
             </div>
             <div className="h-full grow flex items-center">
                 <div>

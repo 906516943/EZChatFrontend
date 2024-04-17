@@ -47,7 +47,7 @@ export default function ChatMessageContainer(props)
     const profileImg = (<>
         <div className={profileImgMg}>
             <div style={{ height: "55px", width: "55px" }}>
-                <Avatar></Avatar>
+                <Avatar shadow={true} border={ true}></Avatar>
             </div>
         </div>
     </>)
