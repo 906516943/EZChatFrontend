@@ -6,6 +6,8 @@ export default class ChatConnector {
         .withUrl(MESSENGER_SERVER, {skipNegotiation: true, transport: signalR.HttpTransportType.WebSockets})
         .build();
 
+    #isConnected = false;
+    
     async Connect(retry = 0, token) { 
 
         //if already connected, disconnect first
@@ -34,6 +36,8 @@ export default class ChatConnector {
         if (!res) { 
             throw new Error("Login failed");
         }
+
+        this.#isConnected = true;
     }
 
 
@@ -42,7 +46,14 @@ export default class ChatConnector {
     }
 
     OnClose(fun) { 
-        this.#connection.onclose(fun);
+        this.#connection.onclose(() => { 
+            this.#isConnected = false;
+            fun();
+        });
+    }
+
+    IsConnected() { 
+        return this.#isConnected;
     }
 
     async SendMessage(msg) { 

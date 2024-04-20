@@ -1,37 +1,9 @@
-import { GenAccessToken, GetAuthInfo, GetUserGroups, GetUserInfo, GetImageIds, PutImage, GetImage } from '../services/Api';
-import ChatConnector from '../services/ChatConnector';
-import { useContext, useEffect, useReducer, useRef, useState } from 'react'
+import { GetImageIds, PutImage, GetImage, GetUserInfo } from '../services/Api';
+import { useContext, useEffect, useReducer} from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
 import { GlobalContext } from '../Global';
 import { GenHash, GenId } from '../services/Utils';
 
-const LEVEL_SUCCESS = 0;
-const LEVEL_WARN = 1;
-const LEVEL_ERROR = 2;
-const LEVEL_INFO = 3;
-
-/*
-    Connection status banner located at the top of the Chat box
-*/
-function ConnectionStatusDOM(connectionStatus) { 
-    let color;
-    let v = connectionStatus.visible ? "h-14" : "h-0"
-    switch (connectionStatus.level)
-    { 
-        case LEVEL_INFO: color = "bg-sky-300/90"; break;
-        case LEVEL_WARN: color = "bg-amber-300/90"; break;
-        case LEVEL_ERROR: color = "bg-red-300/90"; break;
-        case LEVEL_SUCCESS: color = "bg-green-300/90"; break;
-    }
-
-
-    return (
-        <div className={'w-full '+ v + ' absolute z-10 top-0 left-0 backdrop-blur-md shadow-lg flex items-center transition-all overflow-hidden duration-150 box-border ' + color}>
-            <p className='pl-4 text-lg'>{connectionStatus.msg}</p>
-        </div>)
-
-
-}
 
 function SendParse(m, channelId){ 
     return {channelId: channelId, text: m.msg.text, imagesByHash: m.msg.imgs.map(x => x.hash)};
@@ -70,15 +42,6 @@ function MsgQueueReducer(current, action) {
 
 export default function ChatBox(props) { 
     const [msgQueue, setMsgQueue] = useReducer(MsgQueueReducer, [])
-    const [connectionStatus, setConnectionStatus] = useState({ visible: true, level: LEVEL_INFO, msg: "Connecting..." })
-
-    const chatConnector = useRef(new ChatConnector());
-    const userNamesDict = useRef(new Map());
-    const token = useRef(null);
-    const authInfo = useRef({userId: null});
-    const userInfo = useRef({ name: null });
-    const userGroups = useRef([]);
-    const globalContext = useContext(GlobalContext);
     
 
     const SendNewMsgAsync = async (msg) => { 
@@ -101,12 +64,12 @@ export default function ChatBox(props) {
 
 
         //upload new imgs
-        await Promise.all(distinctNewImgs.map(x => PutImage(globalContext.imageMap.get(x.hash).arrayBuffer)));
+        await Promise.all(distinctNewImgs.map(x => PutImage(GlobalContext.cache.imageMap.get(x.hash).arrayBuffer)));
 
 
         //send message
-        const msgId = await chatConnector.current.SendMessage(SendParse(msg, userGroups.current[0]));
-        
+        const msgId = await GlobalContext.service.chat.SendMessage(SendParse(msg, GlobalContext.user.userGroups.Get()[0]));
+
         if (msgId == null) throw new Error("Failed to send message");
 
 
@@ -120,135 +83,118 @@ export default function ChatBox(props) {
 
         const msg = {
             id: GenId(),
-            userName: userInfo.current.name,
+            userName: GlobalContext.user.userInfo.Get()?.name,
             time: Date.now(),
-            userId: authInfo.current.userId,
+            userId: GlobalContext.user.authInfo.Get()?.userId,
             msgId: null,
             success: null,
             msg: { text: x, imgs: imgs }
         };
 
 
+        //if signalR is not connected.. then set msg to failed state
+        if (!GlobalContext.service.chat.IsConnected()) { 
+            msg.success = false;
+            setMsgQueue({ type: 'add', item: msg });
+
+            return;
+        }
+
         //append message to the message queue locally
         setMsgQueue({ type: 'add', item: msg });
 
-
         SendNewMsgAsync(msg)
-        .catch(x => {
-            setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, success: false } });
-        });
+            .catch(x => {
+                console.log(x);
+                setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, success: false } });
+            });
     }
     
 
     
     useEffect(() => { 
+        //handle new message
+        GlobalContext.service.chat.OnReceiveMessage(async (x) => { 
 
-        (async () => {
-
-            try {
-                //make new user
-                token.current = await GenAccessToken();
-
-                //pull user info
-                authInfo.current = await GetAuthInfo(token.current);
-                userInfo.current = await GetUserInfo(authInfo.current.userId);
-                userGroups.current = await GetUserGroups(authInfo.current.userId);
-
-                //connect to the server
-                await chatConnector.current.Connect(5, token.current);
-
-                //handle reconnection
-                chatConnector.current.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
-
-                //handle new message
-                chatConnector.current.OnReceiveMessage(async (x) => { 
-
-                    const msg = ReceiveParse(x);
+            const msg = ReceiveParse(x);
 
 
-                    //pull username
-                    if (!userNamesDict.current.has(msg.userId)) 
-                        userNamesDict.current.set(msg.userId, (await GetUserInfo(msg.userId)).name);
+            //pull username
+            if (!GlobalContext.cache.userNamesMap.has(msg.userId)) 
+                GlobalContext.cache.userNamesMap.set(msg.userId, (await GetUserInfo(msg.userId)).name);
                     
-                    console.log(userNamesDict.current.get(msg.userId));
-                    
-                    msg.userName = userNamesDict.current.get(msg.userId);
+            msg.userName = GlobalContext.cache.userNamesMap.get(msg.userId);
 
 
-                    //pull images from cache
-                    const imgData = msg.msg.imgs;
-                    const imgHashes = imgData.map(x => { 
-                        const ret = { id: GenId(), hash: 'loading' };
+            //pull images from cache
+            const imgData = msg.msg.imgs;
+            const imgHashes = imgData.map(x => { 
+            const ret = { id: GenId(), hash: 'loading' };
 
-                        if (globalContext.imageMap.has(x.hash))
-                            ret.hash = x.hash
+                if (GlobalContext.cache.imageMap.has(x.hash))
+                    ret.hash = x.hash
 
-                        return ret;        
-                    })
+                return ret;        
+            })
 
-                    msg.msg.imgs = imgHashes;
+            msg.msg.imgs = imgHashes;
+
+
+            //initial render
+            setMsgQueue({ type: 'add', item: msg });
+
+
+
+            //if we cannot find images from the cache.. load them from api
+            for (var i = 0; i < imgData.length; i++) { 
+                        
+                if (imgHashes[i].hash != 'loading')
+                    continue;
 
                         
-                    //initial render
-                    setMsgQueue({ type: 'add', item: msg });
+                //load in parallel
+                (async () => {
+                    const currentIndex = i;
 
 
+                    //load thumbnail
+                    var thumbnail = await GetImage(imgData[currentIndex].thumbnailImgId, true);
+                    var thumbnailArrayBuffer = await thumbnail.arrayBuffer();
+                    var thumbnailHash = GenHash(thumbnailArrayBuffer);
 
-                    //if we cannot find images from the cache.. load them from api
-                    for (var i = 0; i < imgData.length; i++) { 
-                        
-                        if (imgHashes[i].hash != 'loading')
-                                continue;
-
-                        
-                        //load in parallel
-                        (async () => {
-                                const currentIndex = i;
-
-
-                                //load thumbnail
-                                var thumbnail = await GetImage(imgData[currentIndex].thumbnailImgId, true);
-                                var thumbnailArrayBuffer = await thumbnail.arrayBuffer();
-                                var thumbnailHash = GenHash(thumbnailArrayBuffer);
-
-                                globalContext.imageMap.set(thumbnailHash, { url: URL.createObjectURL(new Blob([thumbnail])), arrayBuffer: thumbnailArrayBuffer});
-                                msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: thumbnailHash}
-                                
-                                setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
+                    //add thumbnail to cache
+                    GlobalContext.cache.imageMap.set(thumbnailHash, { url: URL.createObjectURL(new Blob([thumbnail])), arrayBuffer: thumbnailArrayBuffer});
+                    msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: thumbnailHash}
+                          
+                    //render
+                    setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
                                 
 
-                                //load real image
-                                var img = await GetImage(imgData[currentIndex].imgId, true);
-                                var imgArrayBuffer = await img.arrayBuffer();
-                                var imgHash = GenHash(imgArrayBuffer);
+                    //load real image
+                    var img = await GetImage(imgData[currentIndex].imgId, true);
+                    var imgArrayBuffer = await img.arrayBuffer();
+                    var imgHash = GenHash(imgArrayBuffer);
 
-                                globalContext.imageMap.set(imgHash, { url: URL.createObjectURL(new Blob([img])), arrayBuffer: imgArrayBuffer });
-                                msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: imgHash}
+                    //add to cache
+                    GlobalContext.cache.imageMap.set(imgHash, { url: URL.createObjectURL(new Blob([img])), arrayBuffer: imgArrayBuffer });
+                    msg.msg.imgs[currentIndex] = {...msg.msg.imgs[currentIndex], hash: imgHash}
                                 
-                                setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
+                    setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg } })
 
-                            })();
-                    }     
+                })();
+                    
+            }     
 
                     
-                });
+        });
+                
 
-
-
-                setConnectionStatus({ visible: true, level: LEVEL_SUCCESS, msg: "Connected" });
-                setTimeout(() => setConnectionStatus({ visible: false, level: LEVEL_SUCCESS, msg: "Connected" }), 1000);
-
-            } catch (err){ 
-                setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: err.message})
-            }
-        })();
         
     },[])
 
     return (
-        <div className='size-full relative'>
-            { ConnectionStatusDOM(connectionStatus)}
-            <ChatBoxBase msgQueue={msgQueue} userName={userInfo.current.name} userId={ authInfo.current.userId} newMsg={SendNewMsg}></ChatBoxBase>
+        <div className='size-full'>
+            <ChatBoxBase msgQueue={msgQueue} userName={GlobalContext.user.userInfo.Get()?.name} userId={ GlobalContext.user.authInfo.Get()?.userId} newMsg={SendNewMsg}></ChatBoxBase>
         </div>
     )
 

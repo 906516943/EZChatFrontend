@@ -22,7 +22,7 @@ function messageStatus(st) {
     </div>)
 }
 
-function imgStatus(img, globalContext) { 
+function imgStatus(img) { 
     
     return (
         <div key={img.id}>
@@ -32,7 +32,7 @@ function imgStatus(img, globalContext) {
                         <Skeleton variant="rectangular" className="rounded-lg" width={210} height={118} />
                     </div>
                 ): (
-                    <img className="rounded-lg max-h-96 p-1" key={img.id} src={globalContext.imageMap.get(img.hash).url}></img>
+                    <img className="rounded-lg max-h-96 p-1" key={img.id} src={GlobalContext.cache.imageMap.get(img.hash).url}></img>
                 )
             }
         </div>
@@ -51,8 +51,6 @@ export default function ChatMessageContainer(props)
             </div>
         </div>
     </>)
-
-    const globalContext = useContext(GlobalContext);
     
     return (
         <div className="p-1 flex w-full items-start">
@@ -89,7 +87,7 @@ export default function ChatMessageContainer(props)
                                 {props.msg.text}
                             </div>
                             {
-                                props.msg.imgs.map(x => imgStatus(x, globalContext))
+                                props.msg.imgs.map(x => imgStatus(x))
                             }
                         </div>        
 

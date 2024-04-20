@@ -10,7 +10,6 @@ const fileFormats = ['.jpg', '.jpeg', '.bmp', '.png', '.gif']
 const fileFormatsStr = fileFormats.reduce((x, y) => x + ', ' + y)
 
 export default function ImageSelector(props) { 
-    const globalContext = useContext(GlobalContext);
 
     const onNewImageClick = () => { 
         
@@ -66,8 +65,8 @@ export default function ImageSelector(props) {
             for (var d of data) { 
                 const fileHash = GenHash(d);
 
-                if (!globalContext.imageMap.has(fileHash)) { 
-                    globalContext.imageMap.set(fileHash, { url: URL.createObjectURL(new Blob([d])), arrayBuffer: d });
+                if (!GlobalContext.cache.imageMap.has(fileHash)) { 
+                    GlobalContext.cache.imageMap.set(fileHash, { url: URL.createObjectURL(new Blob([d])), arrayBuffer: d });
                 }
 
                 imgs.push({ id: GenId(), hash: fileHash});
@@ -85,7 +84,7 @@ export default function ImageSelector(props) {
         if (sameImgs.length == 1)
         { 
             URL.revokeObjectURL(item.data.url);
-            globalContext.imageMap.delete(item.hash);
+            GlobalContext.cache.imageMap.delete(item.hash);
         }
 
 
@@ -96,8 +95,8 @@ export default function ImageSelector(props) {
         <div id="image-selector" className='h-28 p-4 flex gap-4 w-full'>
             {
                 props.imgs
-                    .filter(x => globalContext.imageMap.has(x.hash))
-                    .map(x => { return { id: x.id, hash: x.hash, data: globalContext.imageMap.get(x.hash) } })
+                    .filter(x => GlobalContext.cache.imageMap.has(x.hash))
+                    .map(x => { return { id: x.id, hash: x.hash, data: GlobalContext.cache.imageMap.get(x.hash) } })
                     .map(x => (
                     <div key={x.id} className='h-20 w-20 rounded-lg shrink-0 shadow-xl bg-cover border-2 overflow-hidden' style={{ backgroundImage: 'url("' + x.data.url + '")' }}>
                         <div className='h-full w-full border-white bg-black/30 hover:bg-black/50 transition: duration-100 flex justify-center items-center'>
