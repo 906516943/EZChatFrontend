@@ -46,10 +46,10 @@ export default function ConnectionBanner() {
                 GlobalContext.user.userGroups.Set(await GetUserGroups(GlobalContext.user.authInfo.Get().userId));
 
                 //connect to the server
-                await GlobalContext.service.chat.Connect(5, GlobalContext.user.authToken.Get());
+                await GlobalContext.service.chatConnector.Connect(5, GlobalContext.user.authToken.Get());
 
                 //handle reconnection
-                GlobalContext.service.chat.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
+                GlobalContext.service.chatConnector.OnClose(() => setConnectionStatus({ visible: true, level: LEVEL_ERROR, msg: "Disconnected from the server" }));
 
                 setConnectionStatus({ visible: true, level: LEVEL_SUCCESS, msg: "Connected" });
                 setTimeout(() => setConnectionStatus({ visible: false, level: LEVEL_SUCCESS, msg: "Connected" }), 1000);

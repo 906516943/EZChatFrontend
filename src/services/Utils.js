@@ -15,7 +15,7 @@ export class EventVar{
     #val = null
     #functions = new Map();
 
-    constructor(val) { 
+    constructor(val = null) { 
         this.#val = val;
     }
 

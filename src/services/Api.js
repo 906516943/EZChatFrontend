@@ -57,6 +57,11 @@ export async function GetUserInfo(clientId) {
     return response.json();
 }
 
+export async function GetGroupInfo(groupId) { 
+    const response = await DoGet(USER_SERVER + 'Group/' + groupId)
+    return response.json();
+}
+
 export async function GetUserGroups(clientId) { 
     const response = await DoGet(USER_SERVER + 'User/' + clientId + '/Groups');
     return response.json();
