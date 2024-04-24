@@ -32,7 +32,7 @@ export default class ChatMessageDistributor {
             this.#channelMessageEvents.set(channelId, new EventVar());
         
         const eventId = this.#channelMessageEvents.get(channelId).Subscribe(() => {
-            fun(this.#channelMessageEvents.get(channelId).Get());
+            fun({ ...this.#channelMessageEvents.get(channelId).Get() });
         });
 
         this.#channelIdLookup.set(eventId, channelId);
@@ -41,7 +41,7 @@ export default class ChatMessageDistributor {
 
     SubscribeAllChannels(fun) { 
         return this.#allMessageEvent.Subscribe(() => { 
-            fun(this.#allMessageEvent.Get());
+            fun({ ...this.#allMessageEvent.Get() });
         })
     }
 

@@ -2,10 +2,10 @@ import Profile from "./LeftMenuComponents/Profile";
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconButton } from "@mui/material";
 import ChannelList from "./LeftMenuComponents/ChannelList";
-import { GlobalContext } from "../../Global";
+import { GlobalContext, VIEW_CHAT } from "../../Global";
 import { GetGroupInfo } from "../../services/Api"
 
 
@@ -37,14 +37,34 @@ async function SetGroups(groups, updateFun) {
 }
 
 
-
 export default function LeftMenuBase() { 
 
     const [currentSelected, setCurrentSelected] = useState("groups")
     const [userName, setUserName] = useState("Loading...")
+
     const [userGroups, setUserGroups] = useState(null)
 
+    const channelsMsgInfoDict = useRef(new Map())
+    const [channelsMsgInfo, setChannelsMsgInfo] = useState(new Map())
     const [selectedChatId, setSelectedChatId] = useState(null)
+
+
+
+    const ItemClicked = (item) => {
+
+        GlobalContext.user.selectedChatId.Set(item.id);
+        GlobalContext.currentView.Set(VIEW_CHAT);
+
+        setSelectedChatId(item.id)
+
+        if (channelsMsgInfoDict.current.has(item.id)) { 
+            const t = channelsMsgInfoDict.current.get(item.id);
+            channelsMsgInfoDict.current.set(item.id, {count: 0, text: t.text });
+        }
+        
+        setChannelsMsgInfo(new Map(channelsMsgInfoDict.current));
+    };
+
 
     const content = (state) => {
 
@@ -55,7 +75,8 @@ export default function LeftMenuBase() {
             return (<>
                 {
                     <ChannelList groups={userGroups}
-                        itemClicked={(x) => { setSelectedChatId(x.id); GlobalContext.user.selectedChatId.Set(x.id) }}
+                        channelsMsgInfo={channelsMsgInfo}
+                        itemClicked={(x) => ItemClicked(x) }
                         itemSelectFun={(x) => x.id == selectedChatId}>
                     </ChannelList>
                 }</>)
@@ -79,10 +100,33 @@ export default function LeftMenuBase() {
             SetGroups(groups, setUserGroups);
         });
 
-        
+        const groupsMsgId = GlobalContext.service.chatMessageDistributor.SubscribeAllChannels((msg) => { 
+
+            let text = msg.text;
+
+            if ((msg.imagesById.length != 0)) { 
+                text = text + msg.imagesById.map(x => "[Image]").reduce((a, b) => a + b);
+            }
+
+            if (!channelsMsgInfoDict.current.has(msg.channelId))
+                channelsMsgInfoDict.current.set(msg.channelId, { count: 0, text: text});
+
+            
+            if (msg.channelId == GlobalContext.user.selectedChatId.Get()) {
+                channelsMsgInfoDict.current.set(msg.channelId, { count: 0, text: text});
+            } else { 
+                const t = channelsMsgInfoDict.current.get(msg.channelId);
+                channelsMsgInfoDict.current.set(msg.channelId, { count: t.count + 1, text: text });
+            }
+
+            setChannelsMsgInfo(new Map(channelsMsgInfoDict.current));
+
+        })
+
         return () => { 
             GlobalContext.user.userInfo.Unsubscribe(nameId);
             GlobalContext.user.userGroups.Unsubscribe(groupsId);
+            GlobalContext.service.chatMessageDistributor.UnsubscribeAllChannels(groupsMsgId);
         }
     }, [])
 

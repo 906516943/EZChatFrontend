@@ -11,7 +11,7 @@ export default function Profile(props) {
             <div className="h-full grow flex items-center">
                 <div>
                     <p style={{ width: "230px" }} className={"font-semibold text-2xl text-ellipsis text-nowrap md:max-w-72 max-w-52 overflow-hidden"}>{props.name}</p>
-                    <p style={{width:"230px"}} className={"text-slate-700 font-semibold text-md text-ellipsis text-nowrap md:max-w-72 max-w-52 overflow-hidden"}>empty</p>
+                    <p style={{width: "230px"}} className={"text-slate-700 font-semibold text-md text-ellipsis text-nowrap md:max-w-72 max-w-52 overflow-hidden"}>empty</p>
                 </div>
             </div>
         </div>

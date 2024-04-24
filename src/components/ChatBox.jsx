@@ -1,9 +1,11 @@
 import { GetImageIds, PutImage, GetImage, GetUserInfo } from '../services/Api';
 import { useContext, useEffect, useReducer} from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
-import { GlobalContext } from '../Global';
+import { GlobalContext, VIEW_LANDING_PAGE } from '../Global';
 import { GenHash, GenId } from '../services/Utils';
-
+import { IconButton }  from '@mui/material';
+import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
+import MenuIcon from '@mui/icons-material/Menu';
 
 function MsgQueueReducer(current, action) { 
     switch (action.type) { 
@@ -213,8 +215,27 @@ export default function ChatBox(props) {
     }, []);
 
     return (
-        <div className='size-full'>
-            <ChatBoxBase msgQueue={msgQueue} userName={GlobalContext.user.userInfo.Get()?.name} userId={ GlobalContext.user.authInfo.Get()?.userId} newMsg={SendNewMsg}></ChatBoxBase>
+        <div className='size-full flex flex-col'>
+            <div className='w-full h-14 backdrop-blur-md backdrop-blur-md shadow-md bg-white/60 flex items-center'>
+                <div className='p-2'></div>
+                <div>
+                    <IconButton aria-label="Image" onClick={() => GlobalContext.currentView.Set(VIEW_LANDING_PAGE)}>
+                        <ArrowBackIosIcon fontSize="medium" sx={{ color: "rgba(64, 64, 64)" }}></ArrowBackIosIcon>
+                    </IconButton>   
+                </div>
+                <div className='grow'>
+                    <p className={"w-full text-2xl text-ellipsis text-nowrap overflow-hidden text-center"}>TestTest</p>
+                </div>
+                <div>
+                    <IconButton aria-label="Image" onClick={() => GlobalContext.currentView.Set(VIEW_LANDING_PAGE)}>
+                        <MenuIcon fontSize="medium" sx={{ color: "rgba(64, 64, 64)" }}></MenuIcon>
+                    </IconButton>   
+                </div>
+                <div className='p-2'></div>
+            </div>
+            <div className='w-full h-full'>
+                <ChatBoxBase msgQueue={msgQueue} userName={GlobalContext.user.userInfo.Get()?.name} userId={ GlobalContext.user.authInfo.Get()?.userId} newMsg={SendNewMsg}></ChatBoxBase>
+            </div>
         </div>
     )
 

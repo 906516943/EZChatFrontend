@@ -1,17 +1,56 @@
-import { GlobalContext } from './Global'
+import { useEffect, useState } from 'react'
+import { GlobalContext, VIEW_LANDING_PAGE, VIEW_CHAT, VIEW_CHANNEL_INFO } from './Global'
 import Background from './components/Background'
 import ChatBox from './components/ChatBox'
 import ConnectionBanner from './components/ConnectionBanner'
 import LeftMenu from './components/LeftMenu'
+import StackableLayout from './components/StackableLayout'
 import viteLogo from '/vite.svg'
 
 
 
 function App() {
 
+  const [stack, setStack] = useState(false);
+  const [view, setView] = useState(GlobalContext.currentView.Get());
+
+  useEffect(() => { 
+    //listen size change event
+
+    const resizeEvent = (e) => { 
+      
+      const h = window.innerHeight;
+      const w = window.innerWidth;
+
+      //breakpoint xs
+      if (w < 768) {
+        setStack(true);
+      } else { 
+        setStack(false);
+      }
+
+    }
+
+    const viewId = GlobalContext.currentView.Subscribe(() => { 
+      console.log(GlobalContext.currentView.Get());
+      setView(GlobalContext.currentView.Get());
+    })
+    
+    
+    addEventListener('resize', resizeEvent);
+    resizeEvent(null);
+
+    return () => { 
+      removeEventListener('resize', resizeEvent);
+      GlobalContext.currentView.Unsubscribe(viewId);
+    }
+  }, [])
+
+  console.log(view == VIEW_LANDING_PAGE);
+
   return (
     <Background>
-      <div className='flex w-full h-full relative'>
+      <div className='w-full h-full relative'>
 
         { /*connection banner*/}
         <div className='w-full absolute z-10 top-0 left-0 backdrop-blur-md shadow-lg '>
@@ -20,14 +59,10 @@ function App() {
 
 
         { /*application*/}
-        <div className='flex w-full h-full overflow-auto'>
-          <div className='hidden md:block'>
-            <LeftMenu/>
-          </div>
-          <div className='flex grow w-0'>
-            <ChatBox/>
-          </div>
+        <div className='w-full h-full overflow-auto'>
+          <StackableLayout layer0={<LeftMenu />} layer1={<ChatBox />} stack={stack} showBottom={view == VIEW_LANDING_PAGE} layer1Class={"grow" } />
         </div>
+
       </div>
     </Background>
   )

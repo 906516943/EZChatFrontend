@@ -7,7 +7,9 @@ export const AUTH_SERVER = import.meta.env.VITE_AUTH_SERVER
 export const USER_SERVER = import.meta.env.VITE_USER_SERVER
 export const IMAGE_SERVER = import.meta.env.VITE_IMAGE_SERVER
 
-
+export const VIEW_LANDING_PAGE = 0
+export const VIEW_CHAT = 1
+export const VIEW_CHANNEL_INFO = 2
 
 const chatConnector = new ChatConnector();
 
@@ -27,5 +29,6 @@ export const GlobalContext = {
             userInfo: new EventVar(),
             userGroups: new EventVar(),
             selectedChatId: new EventVar()
-        }
+        },
+        currentView: new EventVar(VIEW_LANDING_PAGE)
     };
