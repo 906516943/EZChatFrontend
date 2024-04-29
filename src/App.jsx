@@ -6,6 +6,7 @@ import ConnectionBanner from './components/ConnectionBanner'
 import LeftMenu from './components/LeftMenu'
 import StackableLayout from './components/StackableLayout'
 import viteLogo from '/vite.svg'
+import MessageSaveService from './serviceComponents/MessageSaveService'
 
 
 
@@ -46,11 +47,12 @@ function App() {
     }
   }, [])
 
-  console.log(view == VIEW_LANDING_PAGE);
-
   return (
     <Background>
       <div className='w-full h-full relative'>
+
+        { /*services*/}
+        <MessageSaveService></MessageSaveService>
 
         { /*connection banner*/}
         <div className='w-full absolute z-10 top-0 left-0 backdrop-blur-md shadow-lg '>

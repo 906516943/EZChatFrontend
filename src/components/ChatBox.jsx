@@ -1,11 +1,9 @@
 import { GetImageIds, PutImage, GetImage, GetUserInfo } from '../services/Api';
-import { useContext, useEffect, useReducer} from 'react'
+import { useContext, useEffect, useReducer, useState} from 'react'
 import ChatBoxBase from './ChatBox/ChatBoxBase'
-import { GlobalContext, VIEW_LANDING_PAGE } from '../Global';
+import ChatBoxTopBanner from './ChatBox/ChatBoxTopBanner'
+import { GlobalContext, VIEW_CHAT }  from '../Global';
 import { GenHash, GenId } from '../services/Utils';
-import { IconButton }  from '@mui/material';
-import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import MenuIcon from '@mui/icons-material/Menu';
 
 function MsgQueueReducer(current, action) { 
     switch (action.type) { 
@@ -157,7 +155,7 @@ async function ReceiveMsgAsync(x, setMsgQueue) {
 
 export default function ChatBox(props) { 
     const [msgQueue, setMsgQueue] = useReducer(MsgQueueReducer, [])
-
+    const [chatVisible, setchatVisible] = useState(false);
 
     const SendNewMsg = (x, imgs) => { 
 
@@ -203,37 +201,34 @@ export default function ChatBox(props) {
 
             //re-subscribe channel
             GlobalContext.service.chatMessageDistributor.UnsubscribeMessageChannel(currentMessageChannelEventId)
-            currentMessageChannelEventId = GlobalContext.service.chatMessageDistributor
-                .SubscribeMessageChannel(GlobalContext.user.selectedChatId.Get(), (x) => ReceiveMsgAsync(x, setMsgQueue));
+
+            if(GlobalContext.user.selectedChatId.Get() != null)
+                currentMessageChannelEventId = GlobalContext.service.chatMessageDistributor
+                    .SubscribeMessageChannel(GlobalContext.user.selectedChatId.Get(), (x) => ReceiveMsgAsync(x, setMsgQueue));
+
+        });
+
+
+        //view change event
+        const viewChangeEvent = GlobalContext.currentView.Subscribe(() => {
+
+            setchatVisible(GlobalContext.currentView.Get() == VIEW_CHAT);
 
         });
 
         return () => {
             GlobalContext.user.selectedChatId.Unsubscribe(eventId);
+            GlobalContext.currentView.Unsubscribe(viewChangeEvent);
         };
 
     }, []);
 
     return (
-        <div className='size-full flex flex-col'>
-            <div className='w-full h-14 backdrop-blur-md backdrop-blur-md shadow-md bg-white/60 flex items-center'>
-                <div className='p-2'></div>
-                <div>
-                    <IconButton aria-label="Image" onClick={() => GlobalContext.currentView.Set(VIEW_LANDING_PAGE)}>
-                        <ArrowBackIosIcon fontSize="medium" sx={{ color: "rgba(64, 64, 64)" }}></ArrowBackIosIcon>
-                    </IconButton>   
-                </div>
-                <div className='grow'>
-                    <p className={"w-full text-2xl text-ellipsis text-nowrap overflow-hidden text-center"}>TestTest</p>
-                </div>
-                <div>
-                    <IconButton aria-label="Image" onClick={() => GlobalContext.currentView.Set(VIEW_LANDING_PAGE)}>
-                        <MenuIcon fontSize="medium" sx={{ color: "rgba(64, 64, 64)" }}></MenuIcon>
-                    </IconButton>   
-                </div>
-                <div className='p-2'></div>
+        <div className={'size-full flex flex-col ease-in-out duration-200 ' + (chatVisible ? 'opacity-100' : 'opacity-0')}>
+            <div className='w-full h-14 shrink-0 grow-0 backdrop-blur-md backdrop-blur-md shadow-md bg-white/60'>
+                <ChatBoxTopBanner></ChatBoxTopBanner>
             </div>
-            <div className='w-full h-full'>
+            <div className='w-full h-full shrink grow min-h-0'>
                 <ChatBoxBase msgQueue={msgQueue} userName={GlobalContext.user.userInfo.Get()?.name} userId={ GlobalContext.user.authInfo.Get()?.userId} newMsg={SendNewMsg}></ChatBoxBase>
             </div>
         </div>

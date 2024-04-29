@@ -90,6 +90,10 @@ export default function LeftMenuBase() {
 
     useEffect(() => { 
 
+        const selectedChatEventId = GlobalContext.user.selectedChatId.Subscribe(() => {
+            setSelectedChatId(GlobalContext.user.selectedChatId.Get());
+        });
+
         const nameId = GlobalContext.user.userInfo.Subscribe(() => { 
             const name = GlobalContext.user.userInfo.Get()?.name ?? "Loading...";
             setUserName(name);
@@ -127,6 +131,7 @@ export default function LeftMenuBase() {
             GlobalContext.user.userInfo.Unsubscribe(nameId);
             GlobalContext.user.userGroups.Unsubscribe(groupsId);
             GlobalContext.service.chatMessageDistributor.UnsubscribeAllChannels(groupsMsgId);
+            GlobalContext.user.selectedChatId.Unsubscribe(selectedChatEventId);
         }
     }, [])
 
