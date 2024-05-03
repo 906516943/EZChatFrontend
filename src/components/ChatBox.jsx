@@ -29,6 +29,10 @@ function MsgQueueReducer(current, action) {
         case 'clear': { 
             return [];
         }
+        case 'addRange': { 
+            current = current.concat(action.item);
+            break;
+        }
     }
 
     return [...current];
@@ -68,13 +72,11 @@ async function SendNewMsgAsync(msg, setMsgQueue) {
 
 
         //send message
-        const msgId = await GlobalContext.service.chatConnector.SendMessage(SendParse(msg, GlobalContext.user.selectedChatId.Get()));
-
-        if (msgId == null) throw new Error("Failed to send message");
-
-
+        const sentMsg = await GlobalContext.service.chatConnector.SendMessage(SendParse(msg, GlobalContext.user.selectedChatId.Get()));
+    await GlobalContext.dbService.AddNewMessage(sentMsg);
+    
         //update send status
-        setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, id: msgId, success: true } });
+        setMsgQueue({ type: 'modify', id: msg.id, newItem: { ...msg, id: sentMsg.msgId, success: true } });
 
 }
 
@@ -194,7 +196,7 @@ export default function ChatBox(props) {
         var currentMessageChannelEventId = null;
 
         //invoke when user select different chat channel
-        const eventId = GlobalContext.user.selectedChatId.Subscribe(() => {
+        const eventId = GlobalContext.user.selectedChatId.Subscribe(async () => {
 
             //clear current chat messages
             setMsgQueue({ type: 'clear' });
@@ -202,9 +204,19 @@ export default function ChatBox(props) {
             //re-subscribe channel
             GlobalContext.service.chatMessageDistributor.UnsubscribeMessageChannel(currentMessageChannelEventId)
 
-            if(GlobalContext.user.selectedChatId.Get() != null)
+            if (GlobalContext.user.selectedChatId.Get() != null) { 
+                
+                //load history
+                const messages = await GlobalContext.dbService.GetMessages(100, GlobalContext.user.selectedChatId.Get());
+                for (var m of messages)
+                    ReceiveMsgAsync(m, setMsgQueue);
+
+
+                console.log(messages);
+
                 currentMessageChannelEventId = GlobalContext.service.chatMessageDistributor
                     .SubscribeMessageChannel(GlobalContext.user.selectedChatId.Get(), (x) => ReceiveMsgAsync(x, setMsgQueue));
+            }
 
         });
 

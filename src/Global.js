@@ -1,5 +1,6 @@
 import ChatConnector from "./services/ChatConnector"
 import ChatMessageDistributor from "./services/ChatMessageDistributor"
+import { DbService } from "./services/DbService"
 import { EventVar } from "./services/Utils"
 
 export const MESSENGER_SERVER = import.meta.env.VITE_MESSENGER_SERVER
@@ -30,5 +31,6 @@ export const GlobalContext = {
             userGroups: new EventVar(),
             selectedChatId: new EventVar()
         },
-        currentView: new EventVar(VIEW_LANDING_PAGE)
+        currentView: new EventVar(VIEW_LANDING_PAGE),
+        dbService: new DbService()
     };

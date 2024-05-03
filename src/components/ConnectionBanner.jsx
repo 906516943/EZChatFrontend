@@ -45,6 +45,12 @@ export default function ConnectionBanner() {
                 GlobalContext.user.userInfo.Set(await GetUserInfo(GlobalContext.user.authInfo.Get().userId));
                 GlobalContext.user.userGroups.Set(await GetUserGroups(GlobalContext.user.authInfo.Get().userId));
 
+                //see if the current browser support indxed db
+                if (!GlobalContext.dbService.Check())
+                    throw new Error("Your broswer doesn't support IndexedDB")
+
+                GlobalContext.dbService.Init(GlobalContext.user.authInfo.Get().userId);
+
                 //connect to the server
                 await GlobalContext.service.chatConnector.Connect(5, GlobalContext.user.authToken.Get());
 
